@@ -1103,8 +1103,14 @@ void FastVerticalInterpHistPdf2::translate(RooFit::Detail::CodeSquashContext &ct
 
    auto& xVar = static_cast<RooRealVar&>(*_x);
 
+   // We also have to assert that x in uniformely binned!
+   if (!dynamic_cast<RooUniformBinning const *>(&xVar.getBinning())) {
+      throw std::runtime_error("We only support uniform binning!");
+   }
+
    int numBins = xVar.numBins();
-   //int numBins = _cacheNominal.size(); // doesn't work because the active bins might be less
+   double xLow = xVar.getMin();
+   double xHigh = xVar.getMax();
 
    std::vector<double> nominalVec(numBins);
    std::vector<double> widthVec(numBins);
@@ -1118,7 +1124,7 @@ void FastVerticalInterpHistPdf2::translate(RooFit::Detail::CodeSquashContext &ct
 
    morphsVecSum.reserve(numBins * _coefList.size());
    morphsVecDiff.reserve(numBins * _coefList.size());
-   for (unsigned int j = 0; j < _coefList.size(); ++j) {
+   for (int j = 0; j < _coefList.size(); ++j) {
        for (int i = 0; i < numBins; ++i) {
            morphsVecSum.push_back(_morphs[j].sum[i]);
            morphsVecDiff.push_back(_morphs[j].diff[i]);
@@ -1129,23 +1135,8 @@ void FastVerticalInterpHistPdf2::translate(RooFit::Detail::CodeSquashContext &ct
        nominalVec[i] = _cacheNominal.GetBinContent(i);
    }
 
-   // The bin index part
-   // We also have to assert that x is uniformely binned!
-   if (!dynamic_cast<RooUniformBinning const *>(&xVar.getBinning())) {
-      throw std::runtime_error("We only support uniform binning!");
-   }
-   double xLow = xVar.getMin();
-   double xHigh = xVar.getMax();
    std::string binIdx = ctx.buildCall("RooFit::Detail::MathFuncs::getUniformBinning", xLow, xHigh, _x, numBins);
-
-   std::string arrName = ctx.getTmpVarName();
-
-   std::stringstream code;
-   code << "double " << arrName << "[" << numBins << "];\n";
-   code << ctx.buildCall("RooFit::Detail::MathFuncs::fastVerticalInterpHistPdf2", numBins, _coefList.size(), _coefList, nominalVec, widthVec, morphsVecSum, morphsVecDiff, _smoothRegion, arrName) + ";\n";
-
-   ctx.addToCodeBody(code.str(), true);
-   ctx.addResult(this, arrName + "[" + binIdx + "]");
+   ctx.addResult(this, ctx.buildCall("RooFit::Detail::MathFuncs::fastVerticalInterpHistPdf2<" + std::to_string(numBins) + ">", binIdx, _coefList.size(), _coefList, nominalVec, widthVec, morphsVecSum, morphsVecDiff, _smoothRegion));
 }
 
 void FastVerticalInterpHistPdf2D2::syncTotal() const {
