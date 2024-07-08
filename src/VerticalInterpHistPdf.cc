@@ -1150,74 +1150,7 @@ void FastVerticalInterpHistPdf2D2::syncTotal() const {
 
 void FastVerticalInterpHistPdf2D2::translate(RooFit::Detail::CodeSquashContext &ctx) const
 {
-   if (_smoothAlgo < 0) {
-      throw std::runtime_error("We only support _smoothAlgo >= 0");
-   }
-
-   if (!_conditional) {
-      throw std::runtime_error("We only support _conditional == true");
-   }
-
-   auto& xVar = static_cast<RooRealVar&>(*_x);
-   auto& yVar = static_cast<RooRealVar&>(*_y);
-
-   // We also have to assert that x and y are uniformely binned!
-   if (!dynamic_cast<RooUniformBinning const *>(&xVar.getBinning())) {
-      throw std::runtime_error("We only support uniform binning!");
-   }
-   if (!dynamic_cast<RooUniformBinning const *>(&yVar.getBinning())) {
-      throw std::runtime_error("We only support uniform binning!");
-   }
-
-   //ctx.addResult(this, "1.0");
-   //int numBins = xVar.numBins() * yVar.numBins();
-   //int numBins = _cacheNominal.size(); // doesn't work because the active bins might be less
-   int numBinsX = _cacheNominal.binX();
-   int numBinsY = _cacheNominal.binY();
-   int numBins = numBinsY * numBinsY;
-
-   std::vector<double> nominalVec(numBins);
-   std::vector<double> widthVec(numBins);
-   std::vector<double> morphsVecSum;
-   std::vector<double> morphsVecDiff;
-
-   for (int i = 0; i < numBins; ++i) {
-       nominalVec[i] = _cacheNominal.GetBinContent(i);
-       widthVec[i] = _cacheNominal.GetWidth(i);
-   }
-
-   morphsVecSum.reserve(numBins * _coefList.size());
-   morphsVecDiff.reserve(numBins * _coefList.size());
-   for (unsigned int j = 0; j < _coefList.size(); ++j) {
-       for (int i = 0; i < numBins; ++i) {
-           morphsVecSum.push_back(_morphs[j].sum[i]);
-           morphsVecDiff.push_back(_morphs[j].diff[i]);
-       }
-   }
-
-   for (int i = 0; i < numBins; ++i) {
-       nominalVec[i] = _cacheNominal.GetBinContent(i);
-   }
-
-   // The bin index part
-   double xLow = xVar.getMin();
-   double xHigh = xVar.getMax();
-   std::string binIdxX = ctx.buildCall("RooFit::Detail::MathFuncs::getUniformBinning", xLow, xHigh, _x, numBinsX);
-   double yLow = yVar.getMin();
-   double yHigh = yVar.getMax();
-   std::string binIdxY = ctx.buildCall("RooFit::Detail::MathFuncs::getUniformBinning", yLow, yHigh, _y, numBinsY);
-
-   std::stringstream binIdx;
-   binIdx << "(" << binIdxY << " + " << yVar.numBins() << " * " << binIdxX << ")";
-
-   std::string arrName = ctx.getTmpVarName();
-
-   std::stringstream code;
-   code << "double " << arrName << "[" << (numBinsX * numBinsY) << "];\n";
-   code << ctx.buildCall("RooFit::Detail::MathFuncs::fastVerticalInterpHistPdf2D2", numBinsX, numBinsY, _coefList.size(), _coefList, nominalVec, widthVec, morphsVecSum, morphsVecDiff, _smoothRegion, arrName) + ";\n";
-
-   ctx.addToCodeBody(code.str(), true);
-   ctx.addResult(this, arrName + "[" + binIdx.str() + "]");
+   ctx.addResult(this, "1.0");
 }
 
 Int_t FastVerticalInterpHistPdf2D2::getMaxVal(const RooArgSet& vars) const {
